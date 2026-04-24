@@ -82,7 +82,7 @@ const fetchPIC = async () => {
     // Sesuaikan nama kolom ('name', 'phone', 'position') dengan yang ada di tabel employees Anda
     const { data, error } = await supabase
       .from('employees')
-      .select('name, phone, struktural') // ambil nama, no telp, dan jabatan
+      .select('name, phone, struktural, departments(name), photo_url') // ambil nama, no telp, dan jabatan
       .eq('department_id', userProfile.department_id)
       .eq('role', 'PIC') // Asumsi: ada kolom role yang membedakan 'Staff' dan 'PIC'
       .maybeSingle(); 
@@ -137,12 +137,12 @@ const fetchPIC = async () => {
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 rounded-xl bg-surface-container-highest border border-secondary flex items-center justify-center text-primary font-bold text-xl uppercase">
             {/* Menampilkan huruf pertama dari nama PIC */}
-            {picInfo.name ? picInfo.name.charAt(0) : 'P'}
+            {picInfo.photo_url ? picInfo.name.charAt(0) : 'P'}
           </div>
           <div>
             <p className="font-headline font-bold text-primary">{picInfo.name}</p>
             {/* Fallback ke 'Manajer Divisi' jika kolom position kosong */}
-            <p className="text-[12px] text-on-surface-variant">{picInfo.position || 'Manajer Divisi'}</p>
+            <p className="text-[12px] text-on-surface-variant">PIC {picInfo.departments?.name || 'Manajer Divisi'}</p>
           </div>
         </div>
         <div className="space-y-3">

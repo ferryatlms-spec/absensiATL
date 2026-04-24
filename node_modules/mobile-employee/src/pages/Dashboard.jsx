@@ -38,21 +38,19 @@ const getCurrentPeriod = () => {
 export default function Dashboard({ userProfile }) {
   const navigate = useNavigate();
   
-  // --- KUMPULAN SEMUA STATE ---
   const [currentTime, setCurrentTime] = useState(new Date());
   const [stats, setStats] = useState({ totalJam: 0, rerataJam: '0.0' });
   const [loadingStats, setLoadingStats] = useState(true);
   
   const [agendas, setAgendas] = useState([]);
-  const [newTaskText, setNewTaskText] = useState('');
-  const [loadingAgenda, setLoadingAgenda] = useState(false);
+  const [featuredTask, setFeaturedTask] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]);
 
   const [todayRecord, setTodayRecord] = useState(null);
   const [attendanceState, setAttendanceState] = useState('loading'); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState('checkIn'); 
   const [activeLeaveInfo, setActiveLeaveInfo] = useState(null);
-  // -----------------------------
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -102,10 +100,8 @@ export default function Dashboard({ userProfile }) {
       setLoadingStats(false);
     }
   };
-  const [featuredTask, setFeaturedTask] = useState(null);
-  const [teamMembers, setTeamMembers] = useState([]);
 
-    const fetchTeamMembers = async () => {
+  const fetchTeamMembers = async () => {
     try {
       const { data, error } = await supabase
         .from('employees')
@@ -119,33 +115,31 @@ export default function Dashboard({ userProfile }) {
   };
 
   const fetchAgendas = async () => {
-  try {
-    // 1. Tarik Agenda Pribadi (seperti biasa)
-    const { data: privateAgendas, error: pError } = await supabase
-      .from('agendas')
-      .select('*')
-      .eq('employee_id', userProfile.id)
-      .order('is_completed', { ascending: true })
-      .order('created_at', { ascending: false });
+    try {
+      const { data: privateAgendas, error: pError } = await supabase
+        .from('agendas')
+        .select('*')
+        .eq('employee_id', userProfile.id)
+        .order('is_completed', { ascending: true })
+        .order('created_at', { ascending: false });
 
-    if (pError) throw pError;
-    setAgendas(privateAgendas || []);
+      if (pError) throw pError;
+      setAgendas(privateAgendas || []);
 
-    // 2. Tarik Agenda Divisi yang sedang disorot (Featured Task)
-    const { data: divTask, error: dError } = await supabase
-      .from('division_tasks')
-      .select('*')
-      .eq('department_id', userProfile.department_id)
-      .eq('is_dashboard_visible', true) // Hanya ambil yang dicentang PIC
-      .maybeSingle(); // Karena kita membatasi hanya 1 di JoblistDivisi
+      const { data: divTask, error: dError } = await supabase
+        .from('division_tasks')
+        .select('*')
+        .eq('department_id', userProfile.department_id)
+        .eq('is_dashboard_visible', true)
+        .maybeSingle(); 
 
-    if (dError) throw dError;
-    setFeaturedTask(divTask);
+      if (dError) throw dError;
+      setFeaturedTask(divTask);
 
-  } catch (err) {
-    console.error("Gagal menarik data agenda:", err.message);
-  }
-};
+    } catch (err) {
+      console.error("Gagal menarik data agenda:", err.message);
+    }
+  };
 
   const toggleAgenda = async (id, currentStatus) => {
     try {
@@ -165,41 +159,27 @@ export default function Dashboard({ userProfile }) {
     }
   };
 
-  const deleteAgenda = async (id) => {
-    try {
-      setAgendas(prev => prev.filter(task => task.id !== id)); 
-      const { error } = await supabase.from('agendas').delete().eq('id', id);
-      if (error) throw error;
-    } catch (err) {
-      console.error("Gagal menghapus agenda:", err.message);
-      fetchAgendas(); 
-    }
-  };
-
   const fetchTodayAttendance = async () => {
     try {
       const today = new Date().toLocaleDateString('en-CA');
       
-      // 1. CEK APAKAH SEDANG CUTI / SAKIT (APPROVED) HARI INI
       const { data: cutiData, error: cutiError } = await supabase
         .from('pengajuan_cuti')
         .select('tipe_izin, alasan')
         .eq('employee_id', userProfile.id)
-        .eq('status', 'Approved') // Hanya yang sudah disetujui PIC
-        .lte('start_date', today) // Tanggal mulai <= hari ini
-        .gte('end_date', today)   // Tanggal selesai >= hari ini
+        .eq('status', 'Approved') 
+        .lte('start_date', today) 
+        .gte('end_date', today)   
         .maybeSingle();
 
       if (cutiError) console.error(cutiError);
 
       if (cutiData) {
-        // Jika sedang dalam masa cuti, blokir absen dan hentikan pengecekan absen normal
         setActiveLeaveInfo(cutiData);
         setAttendanceState('on_leave');
         return; 
       }
 
-      // 2. JIKA TIDAK CUTI, JALANKAN LOGIKA ABSEN NORMAL
       const { data, error } = await supabase
         .from('absen')
         .select('*')
@@ -231,7 +211,7 @@ export default function Dashboard({ userProfile }) {
       const today = new Date().toLocaleDateString('en-CA');
       const { error } = await supabase.from('absen').insert([{ 
         employee_id: userProfile.id, 
-        department_id: userProfile?.department_id || userProfile?.departments?.id || userProfile?.departments_id, // <--- UBAH BARIS INI
+        department_id: userProfile?.department_id || userProfile?.departments?.id || userProfile?.departments_id,
         date: today, 
         status: 'Libur' 
       }]);
@@ -243,11 +223,9 @@ export default function Dashboard({ userProfile }) {
     }
   };
 
-const handleSplitStatus = async (type) => {
+  const handleSplitStatus = async (type) => {
     try {
-      // Gunakan ISO string langsung dari waktu saat ini agar formatnya PASTI valid
       const fullTimestamp = new Date().toISOString();
-
       const updateData = type === 'start' 
         ? { break_start_time: fullTimestamp } 
         : { break_end_time: fullTimestamp };
@@ -269,7 +247,7 @@ const handleSplitStatus = async (type) => {
     setIsModalOpen(true);
   };
 
-const handleModalSave = async (formData) => {
+  const handleModalSave = async (formData) => {
     try {
       const today = new Date().toLocaleDateString('en-CA');
       const fullTimestamp = new Date(`${today}T${formData.time}:00`).toISOString();
@@ -277,7 +255,7 @@ const handleModalSave = async (formData) => {
       if (modalType === 'checkIn') {
         const { error } = await supabase.from('absen').insert([{
           employee_id: userProfile.id,
-          department_id: userProfile?.department_id || userProfile?.departments?.id || userProfile?.departments_id, // <--- UBAH BARIS INI
+          department_id: userProfile?.department_id || userProfile?.departments?.id || userProfile?.departments_id,
           date: today,
           status: 'Hadir',
           clock_in_time: fullTimestamp, 
@@ -322,9 +300,9 @@ const handleModalSave = async (formData) => {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
   });
   const handleGoToJoblist = () => {
-  // Navigasi ke rute agenda sambil membawa "pesan"
-  navigate('/agenda', { state: { targetTab: 'divisi' } });
+    navigate('/agenda', { state: { targetTab: 'divisi' } });
   };
+
   return (
     <main className="max-w-7xl mx-auto px-6 py-8 animate-in fade-in duration-700">
       
@@ -402,19 +380,18 @@ const handleModalSave = async (formData) => {
               )}
               {attendanceState === 'finished' && (
                 <div className="px-12 py-6 rounded-3xl bg-surface-container-low border border-outline-variant/30 text-[#390008] font-headline font-bold text-xl flex items-center gap-3 animate-in zoom-in duration-500">
-                  {/* Ganti icon dan teks berdasarkan status record hari ini */}
                   {todayRecord?.status === 'Libur' ? (
-                      <>
-                <span className="material-symbols-outlined text-orange-500 text-3xl">beach_access</span>
-                    Selamat Berlibur!
-                      </>
-                    ) : (
-                  <>
-                <span className="material-symbols-outlined text-emerald-600 text-3xl">task_alt</span>
-                    Tugas hari ini telah selesai!
-                  </>
-                )}
-              </div>
+                    <>
+                      <span className="material-symbols-outlined text-orange-500 text-3xl">beach_access</span>
+                      Selamat Berlibur!
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-emerald-600 text-3xl">task_alt</span>
+                      Tugas hari ini telah selesai!
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -524,95 +501,77 @@ const handleModalSave = async (formData) => {
           </div>
           <div className="space-y-4">
 
-{featuredTask ? (
-      // 1. UBAH GRADIENT MENJADI WARNA CERAH (Vibrant Sunset)
-      // Gunakan: from-amber-400 via-orange-500 to-pink-500
-      <div className="bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 rounded-[2rem] p-8 shadow-xl text-white relative overflow-hidden group border border-white/30">
-        
-        {/* Dekorasi Ikon Transparan - Dibuat lebih putih agar kontras di warna cerah */}
-        <span className="material-symbols-outlined absolute -right-6 -bottom-6 text-[140px] opacity-20 rotate-12 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110">
-          assignment_late
-        </span>
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-4">
-            {/* Tag Prioritas dengan latar putih transparan agar tetap elegan */}
-            <span className="px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest bg-white/20 backdrop-blur-md border border-white/40 shadow-sm">
-              {featuredTask.priority} Priority
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/90 bg-black/5 px-3 py-1 rounded-full border border-white/10">
-              DL: {featuredTask.deadline}
-            </span>
-          </div>
-          
-          <h4 className="font-headline font-extrabold text-2xl mb-2 leading-tight drop-shadow-sm">
-            {featuredTask.title}
-          </h4>
-          <p className="font-body text-sm text-white/90 leading-relaxed mb-8 line-clamp-3 font-medium">
-            {featuredTask.description}
-          </p>
-          
-          <div className="flex items-end justify-between border-t border-white/20 pt-5">
-             <div className="flex flex-col gap-2.5">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-white/80 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[12px]">groups</span> Delegasi Tim
+            {featuredTask ? (
+              <div className="bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 rounded-[2rem] p-8 shadow-xl text-white relative overflow-hidden group border border-white/30">
+                <span className="material-symbols-outlined absolute -right-6 -bottom-6 text-[140px] opacity-20 rotate-12 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110">
+                  assignment_late
                 </span>
-                
-                {/* RENDER AVATAR DELEGASI */}
-                <div className="flex -space-x-2 relative">
-                  {(() => {
-                    const assigneesData = (featuredTask.assigned_to || []).map(id => teamMembers.find(m => m.id === id)).filter(Boolean);
-                    
-                    if (assigneesData.length === 0) {
-                      return <span className="text-[10px] text-white/60 italic">Unassigned</span>;
-                    }
-
-                    return (
-                      <>
-                        {assigneesData.slice(0, 4).map((staff, i) => (
-                          <div key={i} className="w-8 h-8 rounded-full bg-white border-2 border-orange-500 flex items-center justify-center text-[10px] font-bold text-orange-600 shadow-sm" title={staff.name}>
-                            {staff.name.charAt(0)}
-                          </div>
-                        ))}
-                        {assigneesData.length > 4 && (
-                          <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/40 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
-                            +{assigneesData.length - 4}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest bg-white/20 backdrop-blur-md border border-white/40 shadow-sm">
+                      {featuredTask.priority} Priority
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/90 bg-black/5 px-3 py-1 rounded-full border border-white/10">
+                      DL: {featuredTask.deadline}
+                    </span>
+                  </div>
+                  <h4 className="font-headline font-extrabold text-2xl mb-2 leading-tight drop-shadow-sm">
+                    {featuredTask.title}
+                  </h4>
+                  <p className="font-body text-sm text-white/90 leading-relaxed mb-8 line-clamp-3 font-medium">
+                    {featuredTask.description}
+                  </p>
+                  <div className="flex items-end justify-between border-t border-white/20 pt-5">
+                    <div className="flex flex-col gap-2.5">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-white/80 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px]">groups</span> Delegasi Tim
+                        </span>
+                        <div className="flex -space-x-2 relative">
+                          {(() => {
+                            const assigneesData = (featuredTask.assigned_to || []).map(id => teamMembers.find(m => m.id === id)).filter(Boolean);
+                            if (assigneesData.length === 0) {
+                              return <span className="text-[10px] text-white/60 italic">Unassigned</span>;
+                            }
+                            return (
+                              <>
+                                {assigneesData.slice(0, 4).map((staff, i) => (
+                                  <div key={i} className="w-8 h-8 rounded-full bg-white border-2 border-orange-500 flex items-center justify-center text-[10px] font-bold text-orange-600 shadow-sm" title={staff.name}>
+                                    {staff.name.charAt(0)}
+                                  </div>
+                                ))}
+                                {assigneesData.length > 4 && (
+                                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/40 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                                    +{assigneesData.length - 4}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                    </div>
+                    {featuredTask.assigned_to?.includes(userProfile.id) && (
+                      <span className="bg-white text-orange-600 px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wide shadow-lg animate-bounce">
+                        Tugas Anda
+                      </span>
+                    )}
+                  </div>
                 </div>
-             </div>
-
-             {/* Lencana "Tugas Anda" - Dibuat lebih kontras (Hitam/Gelap di atas cerah) */}
-             {featuredTask.assigned_to?.includes(userProfile.id) && (
-               <span className="bg-white text-orange-600 px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wide shadow-lg animate-bounce">
-                 Tugas Anda
-               </span>
-             )}
-          </div>
-        </div>
-      </div>
-    ) : (
-      // Tampilan Kosong (Tetap cerah/putih bersih)
-      <div className="bg-white rounded-[2rem] p-10 border border-dashed border-stone-200 flex flex-col items-center justify-center text-center h-[280px]">
-        <span className="material-symbols-outlined text-stone-200 text-5xl mb-4">
-          format_list_bulleted
-        </span>
-        <p className="text-stone-400 text-sm font-medium">Belum ada tugas prioritas<br/>dari PIC hari ini.</p>
-      </div>
-    )}
-            <div className="p-6 rounded-2xl bg-stone-50 border border-stone-100">
-              <p className="font-label text-[10px] font-bold text-stone-500 tracking-widest uppercase mb-4">Kehadiran Tim Hari Ini</p>
-              <div className="flex items-center justify-between">
-                <TeamStat value="10" label="Hadir" color="text-[#390008]" />
-                <div className="w-px h-10 bg-stone-200"></div>
-                <TeamStat value="2" label="Cuti" color="text-stone-400" />
-                <div className="w-px h-10 bg-stone-200"></div>
-                <TeamStat value="0" label="Alfa" color="text-error" />
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-[2rem] p-10 border border-dashed border-stone-200 flex flex-col items-center justify-center text-center h-[280px]">
+                <span className="material-symbols-outlined text-stone-200 text-5xl mb-4">
+                  format_list_bulleted
+                </span>
+                <p className="text-stone-400 text-sm font-medium">Belum ada tugas prioritas<br/>dari PIC hari ini.</p>
+              </div>
+            )}
+            
+            {/* INI ADALAH KOMPONEN YANG TELAH DIGANTI */}
+            <TeamAttendanceWidget 
+              departmentId={userProfile?.department_id || userProfile?.departments?.id || userProfile?.departments_id} 
+              teamMembers={teamMembers} 
+            />
+
           </div>
         </div>
       </section>
@@ -638,3 +597,95 @@ const TeamStat = ({ value, label, color }) => (
     <p className="font-label text-[10px] text-stone-400 font-bold uppercase tracking-widest">{label}</p>
   </div>
 );
+
+// --- KOMPONEN BARU: WIDGET KEHADIRAN TIM ---
+const TeamAttendanceWidget = ({ departmentId, teamMembers }) => {
+  const [stats, setStats] = useState({ hadir: 0, cuti: 0, alfa: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTeamStats = async () => {
+      // Jika data tim belum diload atau tidak punya departemen, hentikan
+      if (!departmentId || !teamMembers || teamMembers.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const today = new Date().toLocaleDateString('en-CA'); 
+        const teamIds = teamMembers.map(m => m.id);
+
+        // 1. Ambil data absen hari ini untuk divisi tersebut
+        const { data: logs, error: logsError } = await supabase
+          .from('absen')
+          .select('status, employee_id')
+          .eq('department_id', departmentId)
+          .eq('date', today);
+
+        if (logsError) throw logsError;
+
+        // 2. Ambil data cuti hari ini khusus untuk anggota di dalam Divisi yang sama
+        const { data: leaves, error: leavesError } = await supabase
+          .from('pengajuan_cuti')
+          .select('employee_id')
+          .in('employee_id', teamIds)
+          .eq('status', 'Approved')
+          .lte('start_date', today)
+          .gte('end_date', today);
+
+        if (leavesError) throw leavesError;
+
+        let countHadir = 0;
+        let countCuti = leaves ? leaves.length : 0;
+        
+        const employeesOnLeave = leaves ? leaves.map(l => l.employee_id) : [];
+        const employeesAbsen = logs ? logs.map(l => l.employee_id) : [];
+
+        if (logs) {
+          logs.forEach((log) => {
+            if (log.status === 'Hadir' || log.status === 'Terlambat') countHadir++;
+          });
+        }
+
+        // Hitung Alfa (karyawan di tim yang belum absen dan tidak sedang cuti)
+        let countAlfa = 0;
+        teamMembers.forEach(member => {
+          const isLeave = employeesOnLeave.includes(member.id);
+          const hasAbsen = employeesAbsen.includes(member.id);
+          if (!isLeave && !hasAbsen) {
+            countAlfa++;
+          }
+        });
+
+        setStats({ hadir: countHadir, cuti: countCuti, alfa: countAlfa });
+      } catch (error) {
+        console.error("Gagal menarik data tim:", error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeamStats();
+  }, [departmentId, teamMembers]);
+
+  return (
+    <div className="p-6 rounded-2xl bg-stone-50 border border-stone-100 relative overflow-hidden">
+      {loading && (
+        <div className="absolute top-0 left-0 w-full h-1 bg-stone-200">
+          <div className="h-full bg-primary animate-pulse"></div>
+        </div>
+      )}
+      <p className="font-label text-[10px] font-bold text-stone-500 tracking-widest uppercase mb-4">
+        Kehadiran Tim Hari Ini
+      </p>
+      <div className="flex items-center justify-between">
+        <TeamStat value={loading ? '...' : stats.hadir} label="Hadir" color="text-[#390008]" />
+        <div className="w-px h-10 bg-stone-200"></div>
+        <TeamStat value={loading ? '...' : stats.cuti} label="Cuti" color="text-stone-400" />
+        <div className="w-px h-10 bg-stone-200"></div>
+        <TeamStat value={loading ? '...' : stats.alfa} label="Alfa" color="text-error" />
+      </div>
+    </div>
+  );
+};
