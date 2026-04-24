@@ -1,0 +1,87 @@
+/* 1. Import Font & Icons */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+/* 2. Import Tailwind Core */
+@import "tailwindcss";
+
+/* 3. Import Plugins (Pastikan sudah npm install @tailwindcss/forms @tailwindcss/container-queries) */
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/container-queries";
+
+/* 4. Konfigurasi Tema (Menggantikan tailwind.config.js) */
+@theme {
+  /* Fonts */
+  --font-headline: "Manrope", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+
+  /* Colors */
+  --color-tertiary-fixed-dim: #ffb3b4;
+  --color-on-surface: #1f1b1b;
+  --color-error-container: #ffdad6;
+  --color-secondary-container: #feb700;
+  --color-on-background: #1f1b1b;
+  --color-primary-fixed-dim: #ffb3b4;
+  --color-on-secondary-container: #6b4b00;
+  --color-on-tertiary-fixed: #40000b;
+  --color-surface-dim: #e1d8d7;
+  --color-secondary-fixed-dim: #ffba20;
+  --color-outline: #8a7171;
+  --color-error: #ba1a1a;
+  --color-on-secondary-fixed-variant: #5e4200;
+  --color-background: #fff8f7;
+  --color-on-primary-container: #ea6b73;
+  --color-on-error-container: #93000a;
+  --color-primary: #390008;
+  --color-tertiary-fixed: #ffdada;
+  --color-on-surface-variant: #574142;
+  --color-on-error: #ffffff;
+  --color-surface-bright: #fff8f7;
+  --color-primary-fixed: #ffdad9;
+  --color-inverse-surface: #342f2f;
+  --color-on-tertiary-container: #fa5e6c;
+  --color-surface-tint: #a63841;
+  --color-primary-container: #600014;
+  --color-tertiary: #390009;
+  --color-tertiary-container: #600015;
+  --color-surface-variant: #eae0e0;
+  --color-on-secondary-fixed: #271900;
+  --color-on-primary: #ffffff;
+  --color-on-tertiary: #ffffff;
+  --color-on-secondary: #ffffff;
+  --color-inverse-primary: #ffb3b4;
+  --color-secondary-fixed: #ffdea8;
+  --color-secondary: #7c5800;
+  --color-on-primary-fixed: #40000a;
+  --color-surface-container-low: #fbf1f1;
+  --color-surface-container: #f5eceb;
+  --color-outline-variant: #ddc0bf;
+  --color-on-tertiary-fixed-variant: #900826;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-high: #efe6e5;
+  --color-inverse-on-surface: #f8efee;
+  --color-on-primary-fixed-variant: #86202c;
+  --color-surface-container-highest: #eae0e0;
+  --color-surface: #fff8f7;
+}
+
+/* 5. Custom CSS & Animasi */
+@layer utilities {
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
+    .editorial-shadow {
+        box-shadow: 0 30px 60px -15px rgba(31, 27, 27, 0.08);
+    }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.animate-slide-up {
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
